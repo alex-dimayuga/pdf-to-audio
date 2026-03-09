@@ -1,0 +1,21 @@
+pytesseract + Tesseract OCR (for scanned image pdfs)
+    Things you'll probably want to handle:
+
+    page ordering
+
+    removing headers/footers
+
+    splitting text into chunks (important for TTS)
+Piper TTS (text to speech)
+
+OpenAI TTS
+
+Drag and drop
+Tkinter + tkinterdnd2
+get file path -> process and output pdf.
+
+pyinstaller for .exe
+
+pyDub
+TTS output → WAV
+WAV → MP3 (ffmpeg)
