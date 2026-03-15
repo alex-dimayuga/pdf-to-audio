@@ -19,3 +19,9 @@ pyinstaller for .exe
 pyDub
 TTS output → WAV
 WAV → MP3 (ffmpeg)
+
+voice model
+Download en_GB-cori-high.onnx
+https://github.com/rhasspy/piper/blob/master/VOICES.md
+
+place it in your local directory.
