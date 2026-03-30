@@ -4,42 +4,80 @@ from piper import PiperVoice
 import subprocess
 import wave
 from pathlib import Path
+import tkinter as tk
+from tkinter import filedialog
 
 
 def main():
-    # when we drag and drop we need to just pass the file path to the function
-    script_dir = Path(__file__).parent
-    pdf_path = script_dir / "LOTR.pdf"
+    def convert_pdf(path):
+        pdf_path = Path(path) # convert string to path
 
-    # convert PDF to images
-    images = convert_from_path(pdf_path)
+        # make a folder in the same directory as the pdf path
+        output_folder = pdf_path.parent / f"{pdf_path.stem}_audio" # label it the name of the pdf + _audio
+        output_folder.mkdir(exist_ok=True) # ensure file now exists.
 
-    #print("Pages converted:", len(images))
+        # only output to this new folder
+        wav_path = output_folder / f"{pdf_path.stem}.wav"
+        mp3_path = output_folder / f"{pdf_path.stem}.mp3"
 
-    # save the first page to check it
-    images[0].save("first.png")
-    print("saved first.png")
+        text = ""
+        images = convert_from_path(path)
 
-    # OCR
-    text = pytesseract.image_to_string(images[0])
+        # convert each page to pdf
+        for image in images:
+            # oem3 --psm4 is reccomended for scanned documents
+            text += "\n" + pytesseract.image_to_string(image, config="--oem 3 --psm 4") + "\n"
 
-    print("Extracted text:")
-    print(text)
-    
-    # get the string from a pdf scan.
-    
-    # This can be customized later, perhaps with lower quality or a scroll down menu. We could even have custom commands that install models with
-    # samples of how they sound if we want.
-    voice = PiperVoice.load("en_GB-cori-high.onnx")
+        voice = PiperVoice.load("en_GB-cori-high.onnx")
 
-    # pass the scanned text string into sytnhesizer 
-    with wave.open("speech.wav", "wb") as wav_file:
-        voice.synthesize_wav(text, wav_file)
+        # convert using tts
+        with wave.open(str(wav_path), "wb") as wav_file:
+            voice.synthesize_wav(text, wav_file)
 
+        # place in the folder
+        subprocess.run(["ffmpeg", "-y", "-i", str(wav_path), str(mp3_path)],check=True)
 
-    subprocess.run(["ffmpeg", "-y", "-i", "speech.wav", "speech.mp3"], check=True)
+        # remove the wav file
+        if wav_path.exists():
+            wav_path.unlink()
+        return output_folder, mp3_path
 
-    # Seems to only output an mp3 of the first page of the passed pdf file.
+    def choose_file():
+        path = filedialog.askopenfilename(filetypes=[("PDF files", "*.pdf")])
+
+        if not path:
+            return
+
+        status_label.config(text="Converting...")
+        root.update_idletasks()
+
+        output_folder, mp3_path = convert_pdf(path)
+
+        # open the folder so user can see the mp3
+        subprocess.run(["xdg-open", str(output_folder)])
+
+        # close tkinter window
+        root.destroy()
+
+    root = tk.Tk()
+    root.title("PDF to MP3 Prototype")
+    root.geometry("1200x600")
+
+    button = tk.Button(root, text="Choose file", command=choose_file)
+    button.pack(pady=20)
+
+    status_label = tk.Label(
+        root,
+        text="Waiting for file...",
+        relief="ridge",
+        width=60,
+        height=10,
+        bg="white"
+    )
+    status_label.pack(padx=20, pady=20, fill="both", expand=True)
+
+    root.mainloop()
+
 
 if __name__ == "__main__":
-    main()  
+    main()
