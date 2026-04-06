@@ -1,13 +1,15 @@
 import subprocess
 import sys
 import shutil
+import urllib.request
+from pathlib import Path
 
 def check_and_install():
     # ── PIP PACKAGES ──────────────────────────────────────────────
     pip_packages = {
         "pytesseract": "pytesseract",
         "pdf2image":   "pdf2image",
-        "piper":       "piper-tts",      # import name != pip name
+        "piper":       "piper-tts",
     }
 
     print("Checking Python packages...")
@@ -21,9 +23,7 @@ def check_and_install():
             print(f"  ✔ {import_name} installed")
 
     # ── SYSTEM BINARIES ───────────────────────────────────────────
-    # These CANNOT be pip-installed — we just check and warn the user.
     print("\nChecking system binaries...")
-
     binaries = {
         "tesseract": (
             "Tesseract OCR",
@@ -33,7 +33,7 @@ def check_and_install():
             "FFmpeg",
             "https://ffmpeg.org/download.html"
         ),
-        "pdftoppm": (   # part of Poppler, used by pdf2image
+        "pdftoppm": (
             "Poppler (required by pdf2image)",
             "https://github.com/oschwartz10612/poppler-windows/releases"
         ),
@@ -53,24 +53,36 @@ def check_and_install():
             print(f"  • {name}: {url}")
         input("\nPress Enter to continue anyway, or close this window to exit...")
 
+    # ── PIPER VOICE MODEL FILES ────────────────────────────────────
+    # Piper requires BOTH the .onnx model AND the .onnx.json config to run.
+    print("\nChecking Piper voice model files...")
+
+    base_url = "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_GB/cori/high"
+    model_files = {
+        "en_GB-cori-high.onnx":      f"{base_url}/en_GB-cori-high.onnx",
+        "en_GB-cori-high.onnx.json": f"{base_url}/en_GB-cori-high.onnx.json",
+    }
+
+    for filename, url in model_files.items():
+        filepath = Path(filename)
+        if filepath.exists():
+            print(f"  ✔ {filename}")
+        else:
+            print(f"  ✘ {filename} not found — downloading...")
+            try:
+                urllib.request.urlretrieve(url, filepath)
+                print(f"  ✔ {filename} downloaded")
+            except urllib.error.URLError:
+                print(f"  ✘ Download failed: No internet connection.")
+                print(f"    Please download manually from:\n    {url}")
+                input("\nPress Enter to continue anyway, or close this window to exit...")
+            except Exception as e:
+                print(f"  ✘ Download failed: {e}")
+                input("\nPress Enter to continue anyway, or close this window to exit...")
+
     print("\nAll checks done. Starting app...\n")
 
-# ── STDLIB (no install needed) ────────────────────────────────────
-# wave, pathlib, tkinter, urllib, time, os, threading, ttk
-# These ship with Python — if they're missing, the Python install is broken.
 
 check_and_install()
 
-# ── YOUR NORMAL IMPORTS (safe to do after check) ─────────────────
-import pytesseract
-from pdf2image import convert_from_path
-from piper import PiperVoice
-import subprocess
-import wave
-from pathlib import Path
-import tkinter as tk
-from tkinter import filedialog, messagebox, ttk
-import urllib.request
-import time
-import os
-import threading
+
