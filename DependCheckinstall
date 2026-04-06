@@ -1,0 +1,76 @@
+import subprocess
+import sys
+import shutil
+
+def check_and_install():
+    # ── PIP PACKAGES ──────────────────────────────────────────────
+    pip_packages = {
+        "pytesseract": "pytesseract",
+        "pdf2image":   "pdf2image",
+        "piper":       "piper-tts",      # import name != pip name
+    }
+
+    print("Checking Python packages...")
+    for import_name, pip_name in pip_packages.items():
+        try:
+            __import__(import_name)
+            print(f"  ✔ {import_name}")
+        except ImportError:
+            print(f"  ✘ {import_name} not found — installing {pip_name}...")
+            subprocess.check_call([sys.executable, "-m", "pip", "install", pip_name])
+            print(f"  ✔ {import_name} installed")
+
+    # ── SYSTEM BINARIES ───────────────────────────────────────────
+    # These CANNOT be pip-installed — we just check and warn the user.
+    print("\nChecking system binaries...")
+
+    binaries = {
+        "tesseract": (
+            "Tesseract OCR",
+            "https://github.com/UB-Mannheim/tesseract/wiki"
+        ),
+        "ffmpeg": (
+            "FFmpeg",
+            "https://ffmpeg.org/download.html"
+        ),
+        "pdftoppm": (   # part of Poppler, used by pdf2image
+            "Poppler (required by pdf2image)",
+            "https://github.com/oschwartz10612/poppler-windows/releases"
+        ),
+    }
+
+    missing = []
+    for binary, (friendly_name, url) in binaries.items():
+        if shutil.which(binary):
+            print(f"  ✔ {friendly_name}")
+        else:
+            print(f"  ✘ {friendly_name} not found")
+            missing.append((friendly_name, url))
+
+    if missing:
+        print("\n⚠ Missing system dependencies — please install manually:")
+        for name, url in missing:
+            print(f"  • {name}: {url}")
+        input("\nPress Enter to continue anyway, or close this window to exit...")
+
+    print("\nAll checks done. Starting app...\n")
+
+# ── STDLIB (no install needed) ────────────────────────────────────
+# wave, pathlib, tkinter, urllib, time, os, threading, ttk
+# These ship with Python — if they're missing, the Python install is broken.
+
+check_and_install()
+
+# ── YOUR NORMAL IMPORTS (safe to do after check) ─────────────────
+import pytesseract
+from pdf2image import convert_from_path
+from piper import PiperVoice
+import subprocess
+import wave
+from pathlib import Path
+import tkinter as tk
+from tkinter import filedialog, messagebox, ttk
+import urllib.request
+import time
+import os
+import threading
