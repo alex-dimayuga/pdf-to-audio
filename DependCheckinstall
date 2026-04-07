@@ -65,14 +65,22 @@ def get_poppler_path():
     system = platform.system()
     poppler_dir = Path("poppler")
 
+    # Check system PATH first
+    if shutil.which("pdftoppm"):
+        print("  ✔ Poppler (system)")
+        POPPLER_PATH = None
+        return
+
     exe_name = "pdftoppm.exe" if system == "Windows" else "pdftoppm"
+
+    # Check bundled/local copy
     existing = list(poppler_dir.rglob(exe_name))
     if existing:
         POPPLER_PATH = str(existing[0].parent)
-        print(f"  ✔ Poppler (bundled)")
+        print("  ✔ Poppler (bundled)")
         return
 
-    print("  ✘ Poppler not found — downloading...")
+    print("  ✘ Poppler not found — installing based on OS...")
     poppler_dir.mkdir(exist_ok=True)
 
     try:
@@ -84,29 +92,70 @@ def get_poppler_path():
                 z.extractall(poppler_dir)
             archive_path.unlink()
 
+            candidates = list(poppler_dir.rglob(exe_name))
+            if not candidates:
+                raise FileNotFoundError(f"{exe_name} not found after extraction")
+            POPPLER_PATH = str(candidates[0].parent)
+            print("  ✔ Poppler ready")
+
         elif system == "Darwin":
-            url = "https://github.com/oschwartz10612/poppler-mac/releases/download/v24.08.0-0/poppler-24.08.0_cp313_arm64.tar.bz2"
-            archive_path = Path("poppler.tar.bz2")
-            download_file(url, archive_path)
-            with tarfile.open(archive_path, "r:bz2") as t:
-                t.extractall(poppler_dir)
-            archive_path.unlink()
+            if ensure_homebrew():
+                if brew_install("poppler"):
+                    POPPLER_PATH = None
+                    print("  ✔ Poppler installed via Homebrew")
+                else:
+                    raise RuntimeError("brew install poppler failed")
 
         elif system == "Linux":
-            result = subprocess.run(["apt-get", "install", "-y", "poppler-utils"], capture_output=True)
-            if result.returncode == 0:
-                print("  ✔ Poppler installed via apt")
-                POPPLER_PATH = None
-                return
+            if shutil.which("apt-get"):
+                result = subprocess.run(
+                    ["sudo", "apt-get", "install", "-y", "poppler-utils"],
+                    capture_output=True,
+                    text=True
+                )
+                if result.returncode == 0:
+                    print("  ✔ Poppler installed via apt")
+                    POPPLER_PATH = None
+                    return
+                else:
+                    print("  ✘ apt failed — try: sudo apt install poppler-utils")
+                    return
+
+            elif shutil.which("dnf"):
+                result = subprocess.run(
+                    ["sudo", "dnf", "install", "-y", "poppler-utils"],
+                    capture_output=True,
+                    text=True
+                )
+                if result.returncode == 0:
+                    print("  ✔ Poppler installed via dnf")
+                    POPPLER_PATH = None
+                    return
+                else:
+                    print("  ✘ dnf failed — try: sudo dnf install poppler-utils")
+                    return
+
+            elif shutil.which("yum"):
+                result = subprocess.run(
+                    ["sudo", "yum", "install", "-y", "poppler-utils"],
+                    capture_output=True,
+                    text=True
+                )
+                if result.returncode == 0:
+                    print("  ✔ Poppler installed via yum")
+                    POPPLER_PATH = None
+                    return
+                else:
+                    print("  ✘ yum failed — try: sudo yum install poppler-utils")
+                    return
+
             else:
-                print("  ✘ apt failed — try: sudo apt install poppler-utils")
+                print("  ✘ Unsupported Linux package manager — install Poppler manually")
                 return
 
         candidates = list(poppler_dir.rglob(exe_name))
-        if not candidates:
+        if not candidates and system == "Windows":
             raise FileNotFoundError(f"{exe_name} not found after extraction")
-        POPPLER_PATH = str(candidates[0].parent)
-        print(f"  ✔ Poppler ready")
 
     except Exception as e:
         print(f"  ✘ Poppler setup failed: {e}")
