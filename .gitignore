@@ -1,1 +1,5 @@
 voice_model/*.onnx
+voice_model/*.json
+app/__pycache__/
+data/input_pdfs/
+data/output_audio/

@@ -1,25 +1,33 @@
 """
 ===============================================================================
-Title       : 
+Title       : gui.py
 Project     : PDF-TO-AUDIO
-Authors     : 
-Created     : 
-Description : 
+Authors     :   Alex Dimayuga
+                Alex Franzoni
+                Caleb Burnett
+                Caleb Harper
+                Michael Naughton
+Last Edited : 4/8/2026   
+Description : GUI for PDF/Word to audio converter, built with Tkinter and 
+              tkinterdnd2 for drag-and-drop.
 
 Dependencies:
+    - tkinter
+    - tkinterdnd2
+    - pdf_audio_pipeline (local module with text extraction and TTS functions)
 
-Usage:
+Usage: Run this script to launch the GUI. Use the buttons or drag-and-drop to 
+       add PDF files to the queue, set the output folder, and convert to audio.
 
 Notes:
-
+    - This GUI is designed to work with the functions defined in 
+      pdf_audio_pipeline.py.
+    - WORK-IN-PROGRESS!
 ===============================================================================
 """
 
 # Imports
 # =============================================================================
-# import tkinter as tk
-# import subprocess
-# from tkinter import filedialog
 import os
 import threading
 import tkinter as tk
@@ -264,15 +272,6 @@ class PDFToAudioApp:
         if not self.queued_files:
             messagebox.showwarning("No files", "Add at least one PDF to the queue first.")
             return
-        # if not PDF_AVAILABLE or not GTTS_AVAILABLE:
-        #     missing = []
-        #     if not PDF_AVAILABLE: missing.append("pdfplumber")
-        #     if not GTTS_AVAILABLE: missing.append("gtts")
-        #     messagebox.showerror(
-        #         "Missing libraries",
-        #         f"Please install: pip install {' '.join(missing)}"
-        #     )
-        #     return
 
         self.is_converting = True
         self.convert_btn.config(state="disabled", text="⏳  Converting…")
@@ -325,7 +324,6 @@ class PDFToAudioApp:
 # Entry Point
 # =============================================================================
 def main():
-
     root = TkinterDnD.Tk()   # drag-and-drop-capable root
     app = PDFToAudioApp(root)
     root.mainloop()
@@ -334,58 +332,3 @@ def main():
 if __name__ == "__main__":
     main()
 # =============================================================================
-
-
-# # GUI Class
-# # =============================================================================
-# class PDFToAudioGUI:
-#     def __init__(self):
-#         self.root = tk.Tk()
-#         self.root.title("PDF to MP3 Prototype")
-#         self.root.geometry("1200x600")
-
-#         self.button = tk.Button(self.root, text="Choose file", command=self.choose_file)
-#         self.button.pack(pady=20)
-
-#         self.status_label = tk.Label(
-#             self.root,
-#             text="Waiting for file...",
-#             relief="ridge",
-#             width=60,
-#             height=10,
-#             bg="white"
-#         )
-#         self.status_label.pack(padx=20, pady=20, fill="both", expand=True)
-
-#     def choose_file(self):
-#         path = filedialog.askopenfilename(filetypes=[("PDF files", "*.pdf *.docx")])
-
-#         if not path:
-#             return
-
-#         self.status_label.config(text="Converting File... \n This may take a few minutes.")
-#         self.root.update_idletasks()
-
-#         output_folder, mp3_path, status = convert_file(path)
-
-#         self.status_label.config(text=status)
-
-#         # open the folder so user can see the mp3
-#         subprocess.run(["xdg-open", str(output_folder)])
-
-#         # close tkinter window
-#         self.root.destroy()
-
-#     def run(self):
-#         self.root.mainloop()
-# # =============================================================================
-
-# # Main Function
-# # =============================================================================
-# def main():
-#     app = PDFToAudioGUI()
-#     app.run()   
-
-# if __name__ == "__main__":
-#     main()
-# # =============================================================================
