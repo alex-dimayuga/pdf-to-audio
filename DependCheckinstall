@@ -276,10 +276,12 @@ def get_tesseract_path():
 def check_and_install():
     # ── PIP PACKAGES ──────────────────────────────────────────────
     pip_packages = {
-        "pytesseract": "pytesseract",
-        "pdf2image":   "pdf2image",
-        "piper":       "piper-tts",
-    }
+    "pytesseract": "pytesseract",
+    "pdf2image":   "pdf2image",
+    "piper":       "piper-tts",
+    "fitz":        "pymupdf",      # import name is fitz, pip name is pymupdf
+    "docx":        "python-docx",  # import name is docx, pip name is python-docx
+}
 
     print("Checking Python packages...")
     for import_name, pip_name in pip_packages.items():
