@@ -36,8 +36,10 @@ import time
 from docx import Document
 # =============================================================================
 
-# pass string of path to word doc, and returns extracted text.
+# Helper Functions
+# =============================================================================
 def word_to_text(path): 
+    """ pass string of path to word doc, and returns extracted text. """
     # pass string of path to word doc, and returns extracted text.
     word_path = Path(path) # convert string to path
 
@@ -51,9 +53,9 @@ def word_to_text(path):
     text_content = '\n'.join(full_text)
     
     return text_content
-# -----------------------------------------------------------------------------
-# expects a string, and returns the text of the passed document as a string.
+
 def extract_text(path: str) -> str:
+    """expects a string, and returns the text of the passed document as a string."""
     text = ""
 
 
@@ -93,87 +95,50 @@ def extract_text(path: str) -> str:
     # implicit else, with returning text extraced from word doc.
 
     return text, wav_path, mp3_path, output_folder
-# -----------------------------------------------------------------------------
 
+def convert_file(path):
+    # extract text from file in file path:
+    text, wav_path, mp3_path, output_folder = extract_text(path)
+    #text -> extracted text 
+    #wav_path
+    #mp3_path 
+    #output_folder 
 
-def main():
-    # -----------------------------------------------------------------------------
-    def convert_file(path):
-        # extract text from file in file path:
-        text, wav_path, mp3_path, output_folder = extract_text(path)
-        #text -> extracted text 
-        #wav_path
-        #mp3_path 
-        #output_folder 
+    # Ensure the AI model is downloaded and accessible:
+    voicepath = Path("en_GB-cori-high.onnx")
 
-        # Ensure the AI model is downloaded and accessible:
-        voicepath = Path("en_GB-cori-high.onnx")
+    status_label = "Converting File... \n This may take a few minutes."
 
-        # catch and notify the user to connect to the internet.
-        if not voicepath.exists():
-            try:
-                urllib.request.urlretrieve("https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_GB/cori/high/en_GB-cori-high.onnx", voicepath)
-                status_label.config(text="Model Downloaded! Converting file...")
+    # catch and notify the user to connect to the internet.
+    if not voicepath.exists():
+        try:
+            urllib.request.urlretrieve("https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_GB/cori/high/en_GB-cori-high.onnx", voicepath)
+            # status_label.config(text="Model Downloaded! Converting file...")
+            status_label = "Model Downloaded! Converting file..."
 
-            except urllib.error.URLError: # catch and notify the user to connect to the internet.
-                status_label.config(text="Local Model Not installed. \n Download failed: No internet connection.")
-                return
-
-            except Exception as e:
-                status_label.config(text="Download failed: Unknown error.")
-                print("Error:", e)
-                return
-
-
-        voice = PiperVoice.load(voicepath)
-
-        # convert using tts
-        with wave.open(str(wav_path), "wb") as wav_file:
-            voice.synthesize_wav(text, wav_file)
-
-        # place in the folder
-        subprocess.run(["ffmpeg", "-y", "-i", str(wav_path), str(mp3_path)],check=True)
-
-        # remove the wav file
-        if wav_path.exists():
-            wav_path.unlink()
-        return output_folder, mp3_path
-    # -----------------------------------------------------------------------------
-    def choose_file():
-        path = filedialog.askopenfilename(filetypes=[("PDF files", "*.pdf *.docx")])
-
-        if not path:
+        except urllib.error.URLError: # catch and notify the user to connect to the internet.
+            # status_label.config(text="Local Model Not installed. \n Download failed: No internet connection.")
+            status_label = "Local Model Not installed. \n Download failed: No internet connection."
             return
 
-        status_label.config(text="Converting File... \n This may take a few minutes.")
-        root.update_idletasks()
+        except Exception as e:
+            # status_label.config(text="Download failed: Unknown error.")
+            status_label = "Download failed: Unknown error."
+            print("Error:", e)
+            return
 
-        output_folder, mp3_path = convert_file(path)
 
-        # open the folder so user can see the mp3
-        subprocess.run(["xdg-open", str(output_folder)])
+    voice = PiperVoice.load(voicepath)
 
-        # close tkinter window
-        root.destroy()
-    # -----------------------------------------------------------------------------
-    root = tk.Tk()
-    root.title("PDF to MP3 Prototype")
-    root.geometry("1200x600")
+    # convert using tts
+    with wave.open(str(wav_path), "wb") as wav_file:
+        voice.synthesize_wav(text, wav_file)
 
-    button = tk.Button(root, text="Choose file", command=choose_file)
-    button.pack(pady=20)
+    # place in the folder
+    subprocess.run(["ffmpeg", "-y", "-i", str(wav_path), str(mp3_path)],check=True)
 
-    status_label = tk.Label(
-        root,
-        text="Waiting for file...",
-        relief="ridge",
-        width=60,
-        height=10,
-        bg="white"
-    )
-    status_label.pack(padx=20, pady=20, fill="both", expand=True)
-
-    root.mainloop()
-
-if __name__ == "__main__":
-    main()
+    # remove the wav file
+    if wav_path.exists():
+        wav_path.unlink()
+    return output_folder, mp3_path, status_label
+# =============================================================================
