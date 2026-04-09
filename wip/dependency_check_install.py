@@ -10,10 +10,6 @@ from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).parent.resolve()
 
-POPPLER_PATH = None
-FFMPEG_PATH = None
-TESSERACT_PATH = None
-
 
 def download_file(url, destination):
     """Download a file with a progress bar, following redirects and bypassing SSL issues."""
