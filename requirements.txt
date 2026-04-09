@@ -16,3 +16,4 @@ pytesseract==0.3.13
 setuptools==82.0.1
 sympy==1.14.0
 tkinterdnd2==0.4.3
+python-docx==1.2.0
