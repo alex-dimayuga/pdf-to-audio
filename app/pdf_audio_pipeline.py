@@ -51,6 +51,21 @@ import urllib.request
 from docx import Document
 # =============================================================================
 
+# Check possible locations for Tesseract if Windows
+# =============================================================================
+if platform.system() == "Windows":
+    SCRIPT_DIR = Path(__file__).parent.resolve()
+
+    candidates = [
+        SCRIPT_DIR / "tesseract" / "tesseract.exe",
+        Path(r"C:\Program Files\Tesseract-OCR\tesseract.exe"),
+    ]
+
+    found = next((p for p in candidates if p.exists()), None)
+    if found:
+        pytesseract.pytesseract.tesseract_cmd = str(found)
+# =============================================================================
+
 # Helper Functions
 # =============================================================================
 def word_to_text(path): 
