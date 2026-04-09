@@ -1,21 +1,37 @@
 """
 ===============================================================================
-Title       : main.py
+Title       : pdf_audio_pipeline.py
 Project     : PDF-TO-AUDIO
 Authors     :   Alex Dimayuga
                 Alex Franzoni
                 Caleb Burnett
                 Caleb Harper
                 Michael Naughton
-Version Date: 4/7/26 
-Description : 
+Last Edited : 4/8/2026
+Description : Includes functions for extracting text from PDFs and Word 
+              documents, and converting that text to audio using the Piper TTS 
+              model. Handles both Windows and Linux PDF extraction, and ensures 
+              the Piper model is downloaded and accessible. Creates output 
+              audio files in a new folder named after the input document.
 
-Dependencies:
+Dependencies: 
+    - Python 3.8+
+    - pytesseract (for OCR)
+    - fitz (PyMuPDF, for PDF handling on Windows)
+    - pdf2image (for PDF handling on Linux)
+    - Pillow (for image processing)
+    - piper (for text-to-speech conversion)
 
 Usage:
+    - Use the extract_text function to get text from a PDF or Word document by 
+      passing the file path as a string.
+    - Use the text_to_audio function to convert extracted text to audio by 
+      passing the text and the desired output path for the audio file.
 
 Notes:
-
+    - Windows users must have Tesseract OCR installed and added to PATH for PDF
+      extraction to work. 
+    - WORK-IN-PROGRESS!
 ===============================================================================
 """
 # Imports
@@ -32,7 +48,6 @@ from piper import PiperVoice
 from pathlib import Path
 from tkinter import filedialog
 import urllib.request
-import time
 from docx import Document
 # =============================================================================
 
@@ -65,14 +80,6 @@ def extract_text(path: str) -> str:
     # handle Word docs
     if (file_type == ".docx"):
         text = word_to_text(path) # pass string of path to word doc, and returns extracted text.
-
-    # make a folder in the same directory as the pdf path
-    output_folder = pdf_path.parent / f"{pdf_path.stem}_audio" # label it the name of the pdf + _audio
-    output_folder.mkdir(exist_ok=True) # ensure file now exists.
-
-    # only output to this new folder
-    wav_path = output_folder / f"{pdf_path.stem}.wav"
-    mp3_path = output_folder / f"{pdf_path.stem}.mp3"
 
     # Handle Windows PDF extraction only if word doc not passed:
     if (platform.system() == "Windows") and (text == ""):

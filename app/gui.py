@@ -1,25 +1,34 @@
 """
 ===============================================================================
-Title       : 
+Title       : gui.py
 Project     : PDF-TO-AUDIO
-Authors     : 
-Created     : 
-Description : 
+Authors     : Alex Dimayuga
+              Alex Franzoni
+              Caleb Burnett
+              Caleb Harper
+              Michael Naughton
+Last Edited : 4/8/2026
+Description : GUI for PDF to Audio Converter using Tkinter and tkinterdnd2 for 
+              drag-and-drop functionality. Uses the pdf_audio_pipeline module 
+              for text extraction and audio conversion.
 
 Dependencies:
+        - tkinter
+        - tkinterdnd2
+        - pdf_audio_pipeline (local module)
 
 Usage:
+    - Run this script to launch the GUI.
+    - Drag and drop PDF files onto the designated area or use the "Browse Files" 
+      button
 
 Notes:
-
+    - Work in progress. Some features may be incomplete or subject to change.
 ===============================================================================
 """
 
 # Imports
 # =============================================================================
-# import tkinter as tk
-# import subprocess
-# from tkinter import filedialog
 import os
 import threading
 import tkinter as tk
