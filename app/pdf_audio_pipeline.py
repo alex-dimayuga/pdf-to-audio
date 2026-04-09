@@ -7,28 +7,15 @@ Authors     :   Alex Dimayuga
                 Caleb Burnett
                 Caleb Harper
                 Michael Naughton
-Last Edited : 4/8/2026
-Description : pdf or docx to audio converter, using OCR and TTS. Built with 
-              Python, fitz, pytesseract, pdf2image, and Piper. GUI built with 
-              Tkinter.
+Version Date: 4/7/26 
+Description : 
 
-Dependencies: 
-    - pytesseract, 
-    - fitz, 
-    - PIL
-    - pdf2image
-    - piper
-    - tkinter
-    - tkinterdnd2  
-    - docx
+Dependencies:
 
-Usage: Use extract_text() and text_to_audio() with the GUI to select a PDF or 
-       Word document and convert it to audio. 
+Usage:
 
 Notes:
-    - Windows users must have Tesseract OCR installed and added to PATH for PDF
-      extraction to work. 
-    - WORK-IN-PROGRESS! 
+
 ===============================================================================
 """
 # Imports
@@ -36,13 +23,16 @@ Notes:
 import pytesseract
 import subprocess
 import wave
+import tkinter as tk
 import platform
 import fitz 
 from PIL import Image
 from pdf2image import convert_from_path
 from piper import PiperVoice
 from pathlib import Path
+from tkinter import filedialog
 import urllib.request
+import time
 from docx import Document
 # =============================================================================
 
@@ -50,6 +40,7 @@ from docx import Document
 # =============================================================================
 def word_to_text(path): 
     """ pass string of path to word doc, and returns extracted text. """
+    # pass string of path to word doc, and returns extracted text.
     word_path = Path(path) # convert string to path
 
     word_doc = Document(word_path)
@@ -63,6 +54,7 @@ def word_to_text(path):
     
     return text_content
 
+# For new GUI
 def extract_text(path: str) -> str:
     """expects a string, and returns the text of the passed document as a string."""
     text = ""
@@ -70,9 +62,17 @@ def extract_text(path: str) -> str:
     pdf_path = Path(path) # convert string to path
     file_type = pdf_path.suffix.lower()
 
-    # Handle Word docs
+    # handle Word docs
     if (file_type == ".docx"):
         text = word_to_text(path) # pass string of path to word doc, and returns extracted text.
+
+    # make a folder in the same directory as the pdf path
+    output_folder = pdf_path.parent / f"{pdf_path.stem}_audio" # label it the name of the pdf + _audio
+    output_folder.mkdir(exist_ok=True) # ensure file now exists.
+
+    # only output to this new folder
+    wav_path = output_folder / f"{pdf_path.stem}.wav"
+    mp3_path = output_folder / f"{pdf_path.stem}.mp3"
 
     # Handle Windows PDF extraction only if word doc not passed:
     if (platform.system() == "Windows") and (text == ""):
@@ -92,12 +92,11 @@ def extract_text(path: str) -> str:
             # oem3 --psm4 is reccomended for scanned documents
             text += "\n" + pytesseract.image_to_string(image, config="--oem 3 --psm 4") + "\n"
     
-    # Implicit else, with returning text extraced from word doc.
+    # implicit else, with returning text extraced from word doc.
 
     return text
 
 def text_to_audio(text: str, out_path: str):
-    """ expects a string of text and an output path, and saves the text as an audio file at the output path. """
     voicepath = Path(__file__).resolve().parent.parent / "voice_model" / "en_GB-cori-high.onnx"
 
     # Ensure model is downloaded and accessible:
