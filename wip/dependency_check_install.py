@@ -2,15 +2,286 @@ import subprocess
 import sys
 import shutil
 import urllib.request
+import zipfile
+import tarfile
+import platform
+import ssl
 from pathlib import Path
+
+POPPLER_PATH = None
+FFMPEG_PATH = None
+TESSERACT_PATH = None
+
+
+def download_file(url, destination):
+    """Download a file, bypassing SSL verification issues."""
+    ctx = ssl.create_default_context()
+    ctx.check_hostname = False
+    ctx.verify_mode = ssl.CERT_NONE
+
+    with urllib.request.urlopen(url, context=ctx) as response:
+        with open(destination, "wb") as f:
+            f.write(response.read())
+
+
+def ensure_homebrew():
+    """Installs Homebrew if not present on Mac."""
+    if shutil.which("brew"):
+        print("  ✔ Homebrew already installed")
+        return True
+
+    print("  ✘ Homebrew not found — installing...")
+    print("    (This may take a few minutes and may ask for your password...)")
+    try:
+        install_script_url = "https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh"
+        ctx = ssl.create_default_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+        install_script = urllib.request.urlopen(install_script_url, context=ctx).read().decode()
+        subprocess.run(["/bin/bash", "-c", install_script], check=True)
+        print("  ✔ Homebrew installed")
+        return True
+    except Exception as e:
+        print(f"  ✘ Homebrew install failed: {e}")
+        print("    Install manually: https://brew.sh")
+        input("\nPress Enter to continue anyway or close to exit...")
+        return False
+
+
+def brew_install(package):
+    """Installs a package via Homebrew."""
+    print(f"  Installing {package} via Homebrew...")
+    try:
+        subprocess.run(["brew", "install", package], check=True)
+        print(f"  ✔ {package} installed")
+        return True
+    except Exception as e:
+        print(f"  ✘ brew install {package} failed: {e}")
+        return False
+
+
+def get_poppler_path():
+    global POPPLER_PATH
+    system = platform.system()
+    poppler_dir = Path("poppler")
+
+    # Check system PATH first
+    if shutil.which("pdftoppm"):
+        print("  ✔ Poppler (system)")
+        POPPLER_PATH = None
+        return
+
+    exe_name = "pdftoppm.exe" if system == "Windows" else "pdftoppm"
+
+    # Check bundled/local copy
+    existing = list(poppler_dir.rglob(exe_name))
+    if existing:
+        POPPLER_PATH = str(existing[0].parent)
+        print("  ✔ Poppler (bundled)")
+        return
+
+    print("  ✘ Poppler not found — installing based on OS...")
+    poppler_dir.mkdir(exist_ok=True)
+
+    try:
+        if system == "Windows":
+            url = "https://github.com/oschwartz10612/poppler-windows/releases/download/v24.08.0-0/Release-24.08.0-0.zip"
+            archive_path = Path("poppler.zip")
+            download_file(url, archive_path)
+            with zipfile.ZipFile(archive_path, "r") as z:
+                z.extractall(poppler_dir)
+            archive_path.unlink()
+
+            candidates = list(poppler_dir.rglob(exe_name))
+            if not candidates:
+                raise FileNotFoundError(f"{exe_name} not found after extraction")
+            POPPLER_PATH = str(candidates[0].parent)
+            print("  ✔ Poppler ready")
+
+        elif system == "Darwin":
+            if ensure_homebrew():
+                if brew_install("poppler"):
+                    POPPLER_PATH = None
+                    print("  ✔ Poppler installed via Homebrew")
+                else:
+                    raise RuntimeError("brew install poppler failed")
+
+        elif system == "Linux":
+            if shutil.which("apt-get"):
+                result = subprocess.run(
+                    ["sudo", "apt-get", "install", "-y", "poppler-utils"],
+                    capture_output=True,
+                    text=True
+                )
+                if result.returncode == 0:
+                    print("  ✔ Poppler installed via apt")
+                    POPPLER_PATH = None
+                    return
+                else:
+                    print("  ✘ apt failed — try: sudo apt install poppler-utils")
+                    return
+
+            elif shutil.which("dnf"):
+                result = subprocess.run(
+                    ["sudo", "dnf", "install", "-y", "poppler-utils"],
+                    capture_output=True,
+                    text=True
+                )
+                if result.returncode == 0:
+                    print("  ✔ Poppler installed via dnf")
+                    POPPLER_PATH = None
+                    return
+                else:
+                    print("  ✘ dnf failed — try: sudo dnf install poppler-utils")
+                    return
+
+            elif shutil.which("yum"):
+                result = subprocess.run(
+                    ["sudo", "yum", "install", "-y", "poppler-utils"],
+                    capture_output=True,
+                    text=True
+                )
+                if result.returncode == 0:
+                    print("  ✔ Poppler installed via yum")
+                    POPPLER_PATH = None
+                    return
+                else:
+                    print("  ✘ yum failed — try: sudo yum install poppler-utils")
+                    return
+
+            else:
+                print("  ✘ Unsupported Linux package manager — install Poppler manually")
+                return
+
+        candidates = list(poppler_dir.rglob(exe_name))
+        if not candidates and system == "Windows":
+            raise FileNotFoundError(f"{exe_name} not found after extraction")
+
+    except Exception as e:
+        print(f"  ✘ Poppler setup failed: {e}")
+        input("\nPress Enter to continue anyway or close to exit...")
+
+
+def get_ffmpeg_path():
+    global FFMPEG_PATH
+    system = platform.system()
+
+    if shutil.which("ffmpeg"):
+        print("  ✔ FFmpeg (system)")
+        FFMPEG_PATH = "ffmpeg"
+        return
+
+    ffmpeg_dir = Path("ffmpeg")
+    exe_name = "ffmpeg.exe" if system == "Windows" else "ffmpeg"
+    existing = list(ffmpeg_dir.rglob(exe_name))
+    if existing:
+        FFMPEG_PATH = str(existing[0])
+        print(f"  ✔ FFmpeg (bundled)")
+        return
+
+    print("  ✘ FFmpeg not found — downloading...")
+    ffmpeg_dir.mkdir(exist_ok=True)
+
+    try:
+        if system == "Windows":
+            url = "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip"
+            archive_path = Path("ffmpeg.zip")
+            print("    (This may take a moment, FFmpeg is ~70MB...)")
+            download_file(url, archive_path)
+            with zipfile.ZipFile(archive_path, "r") as z:
+                z.extractall(ffmpeg_dir)
+            archive_path.unlink()
+
+            candidates = list(ffmpeg_dir.rglob(exe_name))
+            if not candidates:
+                raise FileNotFoundError("ffmpeg.exe not found after extraction")
+            FFMPEG_PATH = str(candidates[0])
+            print(f"  ✔ FFmpeg ready")
+
+        elif system == "Darwin":
+            if ensure_homebrew():
+                if brew_install("ffmpeg"):
+                    FFMPEG_PATH = shutil.which("ffmpeg") or "ffmpeg"
+
+        elif system == "Linux":
+            result = subprocess.run(["apt-get", "install", "-y", "ffmpeg"], capture_output=True)
+            if result.returncode == 0:
+                print("  ✔ FFmpeg installed via apt")
+                FFMPEG_PATH = "ffmpeg"
+            else:
+                print("  ✘ apt failed — try: sudo apt install ffmpeg")
+
+    except Exception as e:
+        print(f"  ✘ FFmpeg setup failed: {e}")
+        input("\nPress Enter to continue anyway or close to exit...")
+
+
+def get_tesseract_path():
+    global TESSERACT_PATH
+    system = platform.system()
+
+    if shutil.which("tesseract"):
+        print("  ✔ Tesseract (system)")
+        TESSERACT_PATH = "tesseract"
+        return
+
+    tesseract_dir = Path("tesseract")
+    exe_name = "tesseract.exe" if system == "Windows" else "tesseract"
+    existing = list(tesseract_dir.rglob(exe_name))
+    if existing:
+        TESSERACT_PATH = str(existing[0])
+        print(f"  ✔ Tesseract (bundled)")
+        return
+
+    print("  ✘ Tesseract not found — downloading...")
+    tesseract_dir.mkdir(exist_ok=True)
+
+    try:
+        if system == "Windows":
+            url = "https://github.com/UB-Mannheim/tesseract/releases/download/v5.4.0.20240606/tesseract-ocr-w64-setup-5.4.0.20240606.exe"
+            installer_path = Path("tesseract_installer.exe")
+            print("    (Downloading Tesseract installer...)")
+            download_file(url, installer_path)
+            subprocess.run([
+                str(installer_path),
+                "/S",
+                f"/D={tesseract_dir.resolve()}"
+            ], check=True)
+            installer_path.unlink()
+
+            candidates = list(tesseract_dir.rglob(exe_name))
+            if not candidates:
+                raise FileNotFoundError("tesseract.exe not found after extraction")
+            TESSERACT_PATH = str(candidates[0])
+            print(f"  ✔ Tesseract ready")
+
+        elif system == "Darwin":
+            if ensure_homebrew():
+                if brew_install("tesseract"):
+                    TESSERACT_PATH = shutil.which("tesseract") or "tesseract"
+
+        elif system == "Linux":
+            result = subprocess.run(["apt-get", "install", "-y", "tesseract-ocr"], capture_output=True)
+            if result.returncode == 0:
+                print("  ✔ Tesseract installed via apt")
+                TESSERACT_PATH = "tesseract"
+            else:
+                print("  ✘ apt failed — try: sudo apt install tesseract-ocr")
+
+    except Exception as e:
+        print(f"  ✘ Tesseract setup failed: {e}")
+        input("\nPress Enter to continue anyway or close to exit...")
+
 
 def check_and_install():
     # ── PIP PACKAGES ──────────────────────────────────────────────
     pip_packages = {
-        "pytesseract": "pytesseract",
-        "pdf2image":   "pdf2image",
-        "piper":       "piper-tts",
-    }
+    "pytesseract": "pytesseract",
+    "pdf2image":   "pdf2image",
+    "piper":       "piper-tts",
+    "fitz":        "pymupdf",      # import name is fitz, pip name is pymupdf
+    "docx":        "python-docx",  # import name is docx, pip name is python-docx
+}
 
     print("Checking Python packages...")
     for import_name, pip_name in pip_packages.items():
@@ -23,40 +294,22 @@ def check_and_install():
             print(f"  ✔ {import_name} installed")
 
     # ── SYSTEM BINARIES ───────────────────────────────────────────
-    print("\nChecking system binaries...")
-    binaries = {
-        "tesseract": (
-            "Tesseract OCR",
-            "https://github.com/UB-Mannheim/tesseract/wiki"
-        ),
-        "ffmpeg": (
-            "FFmpeg",
-            "https://ffmpeg.org/download.html"
-        ),
-        "pdftoppm": (
-            "Poppler (required by pdf2image)",
-            "https://github.com/oschwartz10612/poppler-windows/releases"
-        ),
-    }
+    print("\nChecking Poppler...")
+    get_poppler_path()
 
-    missing = []
-    for binary, (friendly_name, url) in binaries.items():
-        if shutil.which(binary):
-            print(f"  ✔ {friendly_name}")
-        else:
-            print(f"  ✘ {friendly_name} not found")
-            missing.append((friendly_name, url))
+    print("\nChecking FFmpeg...")
+    get_ffmpeg_path()
 
-    if missing:
-        print("\n⚠ Missing system dependencies — please install manually:")
-        for name, url in missing:
-            print(f"  • {name}: {url}")
-        input("\nPress Enter to continue anyway, or close this window to exit...")
+    print("\nChecking Tesseract...")
+    get_tesseract_path()
+
+    # ── TELL PYTESSERACT WHERE TESSERACT IS ───────────────────────
+    if TESSERACT_PATH and TESSERACT_PATH != "tesseract":
+        import pytesseract
+        pytesseract.pytesseract.tesseract_cmd = TESSERACT_PATH
 
     # ── PIPER VOICE MODEL FILES ────────────────────────────────────
-    # Piper requires BOTH the .onnx model AND the .onnx.json config to run.
     print("\nChecking Piper voice model files...")
-
     base_url = "https://huggingface.co/rhasspy/piper-voices/resolve/main/en/en_GB/cori/high"
     model_files = {
         "en_GB-cori-high.onnx":      f"{base_url}/en_GB-cori-high.onnx",
@@ -68,21 +321,30 @@ def check_and_install():
         if filepath.exists():
             print(f"  ✔ {filename}")
         else:
-            print(f"  ✘ {filename} not found — downloading...")
+            print(f"  ✘ {filename} — downloading...")
             try:
-                urllib.request.urlretrieve(url, filepath)
+                download_file(url, filepath)
                 print(f"  ✔ {filename} downloaded")
-            except urllib.error.URLError:
-                print(f"  ✘ Download failed: No internet connection.")
-                print(f"    Please download manually from:\n    {url}")
-                input("\nPress Enter to continue anyway, or close this window to exit...")
             except Exception as e:
                 print(f"  ✘ Download failed: {e}")
-                input("\nPress Enter to continue anyway, or close this window to exit...")
+                input("\nPress Enter to continue anyway or close to exit...")
 
     print("\nAll checks done. Starting app...\n")
 
 
+# ── RUN CHECKS BEFORE ANYTHING ELSE ──────────────────────────────
 check_and_install()
 
-
+# ── YOUR NORMAL IMPORTS (safe after checks) ───────────────────────
+import pytesseract
+from pdf2image import convert_from_path
+from piper import PiperVoice
+import subprocess
+import wave
+from pathlib import Path
+import tkinter as tk
+from tkinter import filedialog, messagebox, ttk
+import urllib.request
+import time
+import os
+import threading
