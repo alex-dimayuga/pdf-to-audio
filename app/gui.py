@@ -1,33 +1,25 @@
 """
 ===============================================================================
-Title       : gui.py
+Title       : 
 Project     : PDF-TO-AUDIO
-Authors     :   Alex Dimayuga
-                Alex Franzoni
-                Caleb Burnett
-                Caleb Harper
-                Michael Naughton
-Last Edited : 4/8/2026   
-Description : GUI for PDF/Word to audio converter, built with Tkinter and 
-              tkinterdnd2 for drag-and-drop.
+Authors     : 
+Created     : 
+Description : 
 
 Dependencies:
-    - tkinter
-    - tkinterdnd2
-    - pdf_audio_pipeline (local module with text extraction and TTS functions)
 
-Usage: Run this script to launch the GUI. Use the buttons or drag-and-drop to 
-       add PDF files to the queue, set the output folder, and convert to audio.
+Usage:
 
 Notes:
-    - This GUI is designed to work with the functions defined in 
-      pdf_audio_pipeline.py.
-    - WORK-IN-PROGRESS!
+
 ===============================================================================
 """
 
 # Imports
 # =============================================================================
+# import tkinter as tk
+# import subprocess
+# from tkinter import filedialog
 import os
 import threading
 import tkinter as tk
@@ -57,7 +49,7 @@ class PDFToAudioApp:
     def __init__(self, root: tk.Tk):
         self.root = root
         self.root.title("PDF → Audio Converter")
-        self.root.geometry("620x580")
+        self.root.geometry("620x1200")
         self.root.resizable(False, False)
         self.root.configure(bg=BG)
 
@@ -73,7 +65,7 @@ class PDFToAudioApp:
 
     def _build_ui(self):
         # Title bar
-        title_frame = tk.Frame(self.root, bg=HIGHLIGHT, height=4)
+        title_frame = tk.Frame(self.root, bg=HIGHLIGHT, height=8)
         title_frame.pack(fill="x")
 
         header = tk.Frame(self.root, bg=PANEL, pady=16)
@@ -235,7 +227,7 @@ class PDFToAudioApp:
     def _browse_files(self):
         paths = filedialog.askopenfilenames(
             title="Select PDF files",
-            filetypes=[("PDF files", "*.pdf"), ("All files", "*.*")]
+            filetypes=[("PDF files", "*.pdf *.docx"), ("All files", "*.*")]
         )
         self._add_files(paths)
 
@@ -243,7 +235,7 @@ class PDFToAudioApp:
         added = 0
         for path in paths:
             path = path.strip()
-            if path.lower().endswith(".pdf") and path not in self.queued_files:
+            if path.lower().endswith((".pdf", ".docx")) and path not in self.queued_files:
                 self.queued_files.append(path)
                 self.file_listbox.insert("end", f"  📄  {os.path.basename(path)}")
                 added += 1
@@ -324,6 +316,7 @@ class PDFToAudioApp:
 # Entry Point
 # =============================================================================
 def main():
+
     root = TkinterDnD.Tk()   # drag-and-drop-capable root
     app = PDFToAudioApp(root)
     root.mainloop()
