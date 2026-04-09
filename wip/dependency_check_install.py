@@ -281,6 +281,7 @@ def check_and_install():
     "piper":       "piper-tts",
     "fitz":        "pymupdf",      # import name is fitz, pip name is pymupdf
     "docx":        "python-docx",  # import name is docx, pip name is python-docx
+    "tkinterdnd2":  "tkinterdnd2"
 }
 
     print("Checking Python packages...")
