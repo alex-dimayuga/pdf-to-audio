@@ -10,6 +10,10 @@ from pathlib import Path
 
 SCRIPT_DIR = Path(__file__).parent.resolve()
 
+POPPLER_PATH = None
+FFMPEG_PATH = None
+TESSERACT_PATH = None
+
 
 def download_file(url, destination):
     """Download a file with a progress bar, following redirects and bypassing SSL issues."""
@@ -179,8 +183,7 @@ def get_ffmpeg_path():
 
     # Windows — bundle locally
     ffmpeg_dir = SCRIPT_DIR / "ffmpeg"
-    exe_name = "ffmpeg.exe"
-    existing = list(ffmpeg_dir.rglob(exe_name))
+    existing = list(ffmpeg_dir.rglob("ffmpeg.exe"))
     if existing:
         FFMPEG_PATH = str(existing[0])
         print(f"  ✔ FFmpeg (bundled)")
@@ -198,7 +201,7 @@ def get_ffmpeg_path():
             z.extractall(ffmpeg_dir)
         archive_path.unlink()
 
-        candidates = list(ffmpeg_dir.rglob(exe_name))
+        candidates = list(ffmpeg_dir.rglob("ffmpeg.exe"))
         if not candidates:
             raise FileNotFoundError("ffmpeg.exe not found after extraction")
         FFMPEG_PATH = str(candidates[0])
@@ -236,35 +239,31 @@ def get_tesseract_path():
             print("  ✘ apt install failed — try: sudo apt install tesseract-ocr")
         return
 
-    # Windows — bundle locally
+    # Windows — portable zip, no installer needed
     tesseract_dir = SCRIPT_DIR / "tesseract"
-    exe_name = "tesseract.exe"
-    existing = list(tesseract_dir.rglob(exe_name))
+    existing = list(tesseract_dir.rglob("tesseract.exe"))
     if existing:
         TESSERACT_PATH = str(existing[0])
         print(f"  ✔ Tesseract (bundled)")
         return
 
-    print("  ✘ Tesseract not found — downloading...")
+    print("  ✘ Tesseract not found — downloading portable version...")
     tesseract_dir.mkdir(exist_ok=True)
 
     try:
-        url = "https://github.com/UB-Mannheim/tesseract/releases/download/v5.4.0.20240606/tesseract-ocr-w64-setup-5.4.0.20240606.exe"
-        installer_path = SCRIPT_DIR / "tesseract_installer.exe"
-        print("    (Downloading Tesseract installer...)")
-        download_file(url, installer_path)
-        subprocess.run([
-            str(installer_path),
-            "/S",
-            f"/D={tesseract_dir.resolve()}"
-        ], check=True)
-        installer_path.unlink()
+        url = "https://github.com/UB-Mannheim/tesseract/releases/download/v5.4.0.20240606/tesseract-ocr-w64-portable-5.4.0.20240606.zip"
+        archive_path = SCRIPT_DIR / "tesseract.zip"
+        print("    (Downloading Tesseract portable...)")
+        download_file(url, archive_path)
+        with zipfile.ZipFile(archive_path, "r") as z:
+            z.extractall(tesseract_dir)
+        archive_path.unlink()
 
-        candidates = list(tesseract_dir.rglob(exe_name))
+        candidates = list(tesseract_dir.rglob("tesseract.exe"))
         if not candidates:
             raise FileNotFoundError("tesseract.exe not found after extraction")
         TESSERACT_PATH = str(candidates[0])
-        print(f"  ✔ Tesseract ready")
+        print(f"  ✔ Tesseract ready at {TESSERACT_PATH}")
 
     except Exception as e:
         print(f"  ✘ Tesseract setup failed: {e}")
